@@ -2,9 +2,9 @@
 
 ## Purpose
 
-CLI toolkit library providing reusable components for building interactive command-line applications. Four packages with layered dependencies: terminal utilities (zero deps), interactive menus (promptui), man-page style guides (yaml), and Cobra integration helpers.
+CLI toolkit library providing reusable components for building interactive command-line applications and writing process-level tests. Five packages: terminal utilities (zero deps), interactive menus (promptui), man-page style guides (yaml), shell-like utilities for commands/HTTP/WebSocket, and Cobra integration helpers.
 
-Designed for reuse across CLI tools like poi, powertalk-cli, and future CLIs.
+Designed for reuse across CLI tools like poi, powertalk-cli, and for writing Go tests that invoke external commands.
 
 ## Architecture Overview
 
@@ -26,6 +26,12 @@ Designed for reuse across CLI tools like poi, powertalk-cli, and future CLIs.
 │  ├── types.go       │ Index, Content, Section, Command      │
 │  └── guide.go       │ Guide.ShowIndex(), ShowTopic()        │
 ├─────────────────────────────────────────────────────────────┤
+│  sh/                │ Shell-like utilities (→ websocket)    │
+│  ├── cmd.go         │ Run, Pipe, Chain, Command builder     │
+│  ├── http.go        │ HTTP client with JSON/form helpers    │
+│  ├── ws.go          │ WebSocket client with send/recv       │
+│  └── data.go        │ Generic JSON/YAML parsing, Data type  │
+├─────────────────────────────────────────────────────────────┤
 │  cobrautil/         │ Cobra integration (→ cobra)           │
 │  ├── menu.go        │ MenuCommand(), MenuCommandWithLoader()│
 │  ├── guide.go       │ GuideCommand(), GuideHandler()        │
@@ -35,8 +41,7 @@ Designed for reuse across CLI tools like poi, powertalk-cli, and future CLIs.
 Dependency flow:
   term/ ← menu/ ← cobrautil/
            guide/ ←─┘
-    │        │         │
-    └────────┴─────────┴──→ External: promptui, cobra, yaml
+  sh/ (standalone, uses websocket + yaml)
 ```
 
 ## Directory Structure
@@ -55,6 +60,11 @@ cliq/
 ├── guide/           # Man-page style documentation
 │   ├── types.go     # Index, Content, Section, Command types
 │   └── guide.go     # Rendering and topic lookup
+├── sh/              # Shell-like utilities for tests/scripts
+│   ├── cmd.go       # Command execution, piping, chaining
+│   ├── http.go      # HTTP client helpers
+│   ├── ws.go        # WebSocket client
+│   └── data.go      # Generic JSON/YAML Data type
 └── cobrautil/       # Cobra framework integration
     ├── menu.go      # Create menu commands
     ├── guide.go     # Create guide commands
@@ -110,6 +120,42 @@ type Content struct {
 }
 ```
 
+### sh (shell-like utilities)
+```go
+// Command execution
+func Run(name string, args ...string) *Result
+func Pipe(input *Result, name string, args ...string) *Result
+func Chain(cmds ...[]string) *Result
+
+type Result struct {
+    Stdout, Stderr string
+    ExitCode       int
+}
+func (r *Result) OK() bool
+func (r *Result) Lines() []string
+
+// Command builder
+cmd := Command("git", "status").Dir("/repo").Timeout(5*time.Second)
+result := cmd.Run()
+
+// HTTP client
+client := HTTP().BaseURL("http://api").Auth("token")
+resp := client.PostJSON("/users", data)
+m, _ := resp.JSON()  // map[string]interface{}
+
+// WebSocket
+ws, _ := WS().Auth("token").Dial("ws://host/path")
+ws.Send(`{"action": "ping"}`)
+msg := ws.Recv(5 * time.Second)
+data, _ := msg.JSON()
+ws.Close()
+
+// Generic data (JSON/YAML)
+d, _ := ParseJSON(`{"user": {"name": "alice"}}`)
+name := d.GetString("user.name")  // "alice"
+d.Set("user.age", 30)
+```
+
 ### term utilities
 ```go
 // Styling
@@ -133,23 +179,27 @@ func Box(content string, width int, style BoxStyle) string
 ### Uses
 - `github.com/manifoldco/promptui` - interactive select/prompt (menu/)
 - `github.com/spf13/cobra` - CLI framework integration (cobrautil/)
-- `gopkg.in/yaml.v3` - YAML parsing for menu config (menu/)
+- `github.com/gorilla/websocket` - WebSocket client (sh/)
+- `gopkg.in/yaml.v3` - YAML parsing (menu/, guide/, sh/)
 
 ### Used by
-- poi - documentation CLI (interactive menu)
+- poi - documentation CLI (interactive menu, guide)
 - powertalk-cli - diagnostic CLI (planned)
+- Go tests - process-level testing utilities (sh/)
 
 ## Boundaries
 
 ### Belongs here
 - Terminal styling and formatting
 - Interactive prompts and menus
-- Command execution helpers
+- Man-page style documentation
+- Command execution and piping
+- HTTP/WebSocket client helpers
+- Generic JSON/YAML data manipulation
 - Cobra integration utilities
-- YAML-driven menu configuration
 
 ### Does NOT belong here
 - Application-specific business logic
-- Configuration management beyond menus
-- Network/HTTP utilities
-- File system operations
+- Database or persistent storage
+- Complex configuration management
+- Domain-specific protocols

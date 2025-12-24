@@ -1,15 +1,16 @@
 module:
   name: cliq
   path: .
-  description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, and Cobra integration helpers
+  description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, shell-like utilities, and Cobra integration helpers
   status: active
 
-tags: [cli, terminal, menu, guide, prompts, toolkit, go, tui, interactive]
+tags: [cli, terminal, menu, guide, sh, http, websocket, json, yaml, prompts, toolkit, go, tui, interactive]
 
 dependencies:
   uses:
     - github.com/manifoldco/promptui
     - github.com/spf13/cobra
+    - github.com/gorilla/websocket
     - gopkg.in/yaml.v3
   used_by:
     - poi
@@ -66,6 +67,36 @@ entities:
     tags: [function, cobra]
     description: Create a Cobra command for displaying guides
 
+  - name: Run
+    file: sh/cmd.go
+    tags: [function, command, core]
+    description: Execute a command and return Result with stdout/stderr/exitcode
+
+  - name: Pipe
+    file: sh/cmd.go
+    tags: [function, command]
+    description: Run command with input from previous Result's stdout
+
+  - name: Command
+    file: sh/cmd.go
+    tags: [function, builder]
+    description: Create command builder with Dir, Env, Stdin, Timeout options
+
+  - name: HTTPClient
+    file: sh/http.go
+    tags: [struct, http, core]
+    description: HTTP client with BaseURL, Auth, and JSON/form helpers
+
+  - name: WSConn
+    file: sh/ws.go
+    tags: [struct, websocket, core]
+    description: WebSocket connection with Send, Recv, and ExpectJSON
+
+  - name: Data
+    file: sh/data.go
+    tags: [type, json, yaml, core]
+    description: Generic map with dot-path access (Get, Set, GetString, etc.)
+
 gotchas:
   - id: custom-action-handler
     tags: [menu, actions]
@@ -96,3 +127,18 @@ gotchas:
     tags: [guide, config]
     summary: Options.Prefix must match the embed directory path
     section: Guide Filesystem Prefix
+
+  - id: sh-result-err-vs-exitcode
+    tags: [sh, command]
+    summary: Result.Err is for exec errors, ExitCode for command exit status - use OK()
+    section: sh.Result Error vs ExitCode
+
+  - id: sh-data-path-syntax
+    tags: [sh, data, json]
+    summary: Data.Get uses dot-separated paths with array indexing (e.g., users.0.name)
+    section: sh.Data Path Syntax
+
+  - id: sh-ws-close-required
+    tags: [sh, websocket]
+    summary: WSConn starts a goroutine on Dial - always call Close() to stop it
+    section: WebSocket Read Loop

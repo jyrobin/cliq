@@ -2,7 +2,7 @@ version: 1
 workspace: ""
 modules:
     - name: cliq
-      description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, and Cobra integration helpers
+      description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, shell-like utilities, and Cobra integration helpers
       path: .
       type: library
       tags:
@@ -11,6 +11,11 @@ modules:
         - menu
         - prompts
         - guide
+        - sh
+        - http
+        - websocket
+        - json
+        - yaml
         - toolkit
         - go
         - tui
@@ -19,6 +24,7 @@ modules:
         uses:
             - github.com/manifoldco/promptui
             - github.com/spf13/cobra
+            - github.com/gorilla/websocket
             - gopkg.in/yaml.v3
       status: active
       has_summary: true
@@ -29,11 +35,17 @@ tag_index:
         - cliq
     guide:
         - cliq
+    http:
+        - cliq
     interactive:
+        - cliq
+    json:
         - cliq
     menu:
         - cliq
     prompts:
+        - cliq
+    sh:
         - cliq
     terminal:
         - cliq
@@ -41,10 +53,15 @@ tag_index:
         - cliq
     tui:
         - cliq
+    websocket:
+        - cliq
+    yaml:
+        - cliq
 dependency_graph:
     cliq:
         uses:
             - github.com/manifoldco/promptui
             - github.com/spf13/cobra
+            - github.com/gorilla/websocket
             - gopkg.in/yaml.v3
-updated_at: "2025-12-24T06:53:11Z"
+updated_at: "2025-12-24T08:03:31Z"

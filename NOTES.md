@@ -79,6 +79,38 @@ g := guide.New(docsFS, guide.Options{})
 g := guide.New(docsFS, guide.Options{Prefix: "docs"})
 ```
 
+### sh.Result Error vs ExitCode
+Check both Err and ExitCode - they indicate different failures:
+```go
+result := sh.Run("nonexistent-cmd")
+// result.Err != nil      (command not found)
+// result.ExitCode == -1
+
+result := sh.Run("false")  // exits with code 1
+// result.Err == nil       (command ran successfully)
+// result.ExitCode == 1    (but returned error code)
+
+// Use OK() to check both
+if !result.OK() { ... }
+```
+
+### sh.Data Path Syntax
+Data.Get() uses dot-separated paths with array indexing:
+```go
+d, _ := ParseJSON(`{"users": [{"name": "alice"}, {"name": "bob"}]}`)
+d.Get("users.0.name")  // "alice"
+d.Get("users.1.name")  // "bob"
+d.Get("users.2.name")  // nil (out of bounds)
+```
+
+### WebSocket Read Loop
+WSConn starts a goroutine on Dial(). Always call Close():
+```go
+ws, err := sh.Dial("ws://host/path")
+if err != nil { ... }
+defer ws.Close()  // Important: stops read goroutine
+```
+
 ## Debugging
 
 ### Menu Not Showing Items
@@ -123,7 +155,14 @@ Menus are interactive - test components separately:
 | menu/types.go | Config structures for YAML menus |
 | menu/menu.go | Main menu rendering loop |
 | menu/exec.go | Command execution and input collection |
+| guide/types.go | Guide index and content types |
+| guide/guide.go | Guide rendering and loading |
+| sh/cmd.go | Run, Pipe, Chain, Command builder |
+| sh/http.go | HTTPClient with JSON/form helpers |
+| sh/ws.go | WebSocket client with Recv/Send |
+| sh/data.go | Generic Data type for JSON/YAML |
 | cobrautil/menu.go | Create Cobra commands from menu config |
+| cobrautil/guide.go | Create Cobra commands for guides |
 | cobrautil/common.go | Version command, flag helpers |
 
 ## Historical Decisions
