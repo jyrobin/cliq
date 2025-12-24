@@ -1,0 +1,11 @@
+version: 1
+module_name: cliq
+type: library
+role: toolkit
+tags:
+    - cli
+    - terminal
+    - menu
+    - prompts
+registered_at: "2025-12-24T06:33:13Z"
+collected_at: "2025-12-24T06:53:11Z"

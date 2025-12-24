@@ -1,0 +1,18 @@
+version: 1
+
+# Workspace settings
+workspace:
+  root: .
+
+# Recipe definitions
+recipes:
+  # Example recipe - customize based on your project
+  # audio-bug:
+  #   description: "Investigating audio quality issues"
+  #   steps:
+  #     - tool: refs
+  #       args: [voiceturn-ai]
+  #     - tool: grep
+  #       args: ["--gotchas", "--tags", "audio"]
+  #     - tool: recent
+  #       args: ["**/transport/**"]

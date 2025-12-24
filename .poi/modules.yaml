@@ -1,0 +1,50 @@
+version: 1
+workspace: ""
+modules:
+    - name: cliq
+      description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, and Cobra integration helpers
+      path: .
+      type: library
+      tags:
+        - cli
+        - terminal
+        - menu
+        - prompts
+        - guide
+        - toolkit
+        - go
+        - tui
+        - interactive
+      relations:
+        uses:
+            - github.com/manifoldco/promptui
+            - github.com/spf13/cobra
+            - gopkg.in/yaml.v3
+      status: active
+      has_summary: true
+tag_index:
+    cli:
+        - cliq
+    go:
+        - cliq
+    guide:
+        - cliq
+    interactive:
+        - cliq
+    menu:
+        - cliq
+    prompts:
+        - cliq
+    terminal:
+        - cliq
+    toolkit:
+        - cliq
+    tui:
+        - cliq
+dependency_graph:
+    cliq:
+        uses:
+            - github.com/manifoldco/promptui
+            - github.com/spf13/cobra
+            - gopkg.in/yaml.v3
+updated_at: "2025-12-24T06:53:11Z"
