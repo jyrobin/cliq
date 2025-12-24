@@ -49,6 +49,10 @@ Dependency flow:
 ```
 cliq/
 ├── go.mod           # github.com/jyrobin/cliq
+├── cmd/cliq/        # CLI binary (go install github.com/jyrobin/cliq/cmd/cliq@latest)
+│   ├── main.go
+│   ├── root.go
+│   └── tail.go      # cliq tail <pattern>
 ├── term/            # Zero external dependencies
 │   ├── style.go     # ANSI styling functions
 │   ├── prompt.go    # User input utilities
@@ -64,7 +68,8 @@ cliq/
 │   ├── cmd.go       # Command execution, piping, chaining
 │   ├── http.go      # HTTP client helpers
 │   ├── ws.go        # WebSocket client
-│   └── data.go      # Generic JSON/YAML Data type
+│   ├── data.go      # Generic JSON/YAML Data type
+│   └── tail.go      # Multi-file tail with fsnotify
 └── cobrautil/       # Cobra framework integration
     ├── menu.go      # Create menu commands
     ├── guide.go     # Create guide commands

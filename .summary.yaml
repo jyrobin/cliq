@@ -4,13 +4,14 @@ module:
   description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, shell-like utilities, and Cobra integration helpers
   status: active
 
-tags: [cli, terminal, menu, guide, sh, http, websocket, json, yaml, prompts, toolkit, go, tui, interactive]
+tags: [cli, terminal, menu, guide, sh, http, websocket, json, yaml, tail, fsnotify, prompts, toolkit, go, tui, interactive]
 
 dependencies:
   uses:
     - github.com/manifoldco/promptui
     - github.com/spf13/cobra
     - github.com/gorilla/websocket
+    - github.com/fsnotify/fsnotify
     - gopkg.in/yaml.v3
   used_by:
     - poi
@@ -96,6 +97,11 @@ entities:
     file: sh/data.go
     tags: [type, json, yaml, core]
     description: Generic map with dot-path access (Get, Set, GetString, etc.)
+
+  - name: Tail
+    file: sh/tail.go
+    tags: [function, file, fsnotify]
+    description: Follow multiple files with colored output using fsnotify
 
 gotchas:
   - id: custom-action-handler
