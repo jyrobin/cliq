@@ -53,6 +53,21 @@ entities:
     tags: [function, styling]
     description: Return dimmed ANSI-styled text
 
+  - name: MultiSelect
+    file: term/multiselect.go
+    tags: [function, interactive, core]
+    description: Interactive multi-select with checkboxes, returns selected IDs
+
+  - name: MultiSelectDeselected
+    file: term/multiselect.go
+    tags: [function, interactive]
+    description: Like MultiSelect but returns deselected IDs (for skip lists)
+
+  - name: SelectItem
+    file: term/multiselect.go
+    tags: [struct, interactive]
+    description: Item for multi-select with ID, label, description, required flag
+
   - name: Copyable
     file: term/box.go
     tags: [function, display]
