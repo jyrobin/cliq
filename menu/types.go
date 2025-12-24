@@ -16,14 +16,15 @@ type Category struct {
 
 // Item represents a single menu action.
 type Item struct {
-	Name    string  `yaml:"name"`
-	Short   string  `yaml:"short"`   // Short description
-	Action  string  `yaml:"action"`  // Action type: run, prompt, custom
-	Command string  `yaml:"command"` // Command template with {{.var}} placeholders
-	Preview string  `yaml:"preview"` // Dry-run command variant
-	Inputs  []Input `yaml:"inputs"`  // Input prompts for variables
-	Output  string  `yaml:"output"`  // Output hint: "clipboard" for copy suggestion
-	Topic   string  `yaml:"topic"`   // For custom actions (e.g., guide topic)
+	Name     string  `yaml:"name"`
+	Short    string  `yaml:"short"`    // Short description
+	Action   string  `yaml:"action"`   // Action type: run, prompt, guide, workflow, custom
+	Command  string  `yaml:"command"`  // Command template with {{.var}} placeholders
+	Preview  string  `yaml:"preview"`  // Dry-run command variant
+	Inputs   []Input `yaml:"inputs"`   // Input prompts for variables
+	Output   string  `yaml:"output"`   // Output hint: "clipboard" for copy suggestion
+	Topic    string  `yaml:"topic"`    // For guide action: guide topic name
+	Workflow string  `yaml:"workflow"` // For workflow action: workflow name
 }
 
 // Input represents a user input field.
