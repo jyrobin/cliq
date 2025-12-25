@@ -24,10 +24,10 @@ opts := menu.Options{
 Command templates use `{{.var}}` not `${var}`:
 ```yaml
 # WRONG
-command: "poi bootstrap --module ${module}"
+command: "mycli build --target ${target}"
 
 # RIGHT
-command: "poi bootstrap --module {{.module}}"
+command: "mycli build --target {{.target}}"
 ```
 
 ### Input IDs Must Match Template Variables
@@ -35,12 +35,12 @@ command: "poi bootstrap --module {{.module}}"
 # WRONG - ID mismatch
 inputs:
   - id: path        # ID is "path"
-command: "poi scan {{.module}}"  # Template uses "module"
+command: "mycli scan {{.target}}"  # Template uses "target"
 
 # RIGHT - IDs match
 inputs:
-  - id: module
-command: "poi scan {{.module}}"
+  - id: target
+command: "mycli scan {{.target}}"
 ```
 
 ### term Package Has Zero Dependencies

@@ -13,9 +13,7 @@ dependencies:
     - github.com/gorilla/websocket
     - github.com/fsnotify/fsnotify
     - gopkg.in/yaml.v3
-  used_by:
-    - poi
-    - powertalk-cli (planned)
+  used_by: []
 
 entities:
   - name: Menu

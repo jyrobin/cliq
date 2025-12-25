@@ -33,3 +33,6 @@ go.work.sum
 
 build/
 
+# POI workspace metadata (local only)
+.poi.yaml
+.poi/

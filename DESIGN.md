@@ -4,7 +4,7 @@
 
 CLI toolkit library providing reusable components for building interactive command-line applications and writing process-level tests. Five packages: terminal utilities (zero deps), interactive menus (promptui), man-page style guides (yaml), shell-like utilities for commands/HTTP/WebSocket, and Cobra integration helpers.
 
-Designed for reuse across CLI tools like poi, powertalk-cli, and for writing Go tests that invoke external commands.
+Designed for reuse across CLI tools and for writing Go tests that invoke external commands.
 
 ## Architecture Overview
 
@@ -206,9 +206,8 @@ func MultiSelectDeselected(items []SelectItem, opts MultiSelectOptions) ([]strin
 - `gopkg.in/yaml.v3` - YAML parsing (menu/, guide/, sh/)
 
 ### Used by
-- poi - documentation CLI (interactive menu, guide)
-- powertalk-cli - diagnostic CLI (planned)
-- Go tests - process-level testing utilities (sh/)
+- CLI tools using interactive menus and guides
+- Go tests for process-level testing (sh/)
 
 ## Boundaries
 
