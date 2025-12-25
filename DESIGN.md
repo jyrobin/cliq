@@ -12,10 +12,11 @@ Designed for reuse across CLI tools like poi, powertalk-cli, and for writing Go 
 ┌─────────────────────────────────────────────────────────────┐
 │                         cliq                                 │
 ├─────────────────────────────────────────────────────────────┤
-│  term/              │ Terminal utilities (zero deps)        │
+│  term/              │ Terminal utilities (→ x/term)         │
 │  ├── style.go       │ ANSI colors: Dim, Bold, Success, etc  │
 │  ├── prompt.go      │ Input: WaitForEnter, Confirm, ReadLine│
-│  └── box.go         │ Box drawing, Copyable commands        │
+│  ├── box.go         │ Box drawing, Copyable commands        │
+│  └── multiselect.go │ Interactive checkbox list             │
 ├─────────────────────────────────────────────────────────────┤
 │  menu/              │ Interactive menus (→ promptui)        │
 │  ├── types.go       │ Config, Category, Item, Options       │
@@ -39,9 +40,9 @@ Designed for reuse across CLI tools like poi, powertalk-cli, and for writing Go 
 └─────────────────────────────────────────────────────────────┘
 
 Dependency flow:
-  term/ ← menu/ ← cobrautil/
-           guide/ ←─┘
-  sh/ (standalone, uses websocket + yaml)
+  term/ (→ x/term) ← menu/ ← cobrautil/
+                     guide/ ←─┘
+  sh/ (standalone, uses websocket + yaml + fsnotify)
 ```
 
 ## Directory Structure
@@ -53,10 +54,11 @@ cliq/
 │   ├── main.go
 │   ├── root.go
 │   └── tail.go      # cliq tail <pattern>
-├── term/            # Zero external dependencies
+├── term/            # Terminal utilities (→ golang.org/x/term)
 │   ├── style.go     # ANSI styling functions
 │   ├── prompt.go    # User input utilities
-│   └── box.go       # Box drawing and copyable content
+│   ├── box.go       # Box drawing and copyable content
+│   └── multiselect.go # Interactive multi-select with checkboxes
 ├── menu/            # Interactive menu system
 │   ├── types.go     # YAML-loadable configuration types
 │   ├── menu.go      # Menu rendering with promptui
@@ -86,11 +88,13 @@ type Config struct {
 }
 
 type Item struct {
-    Name    string  `yaml:"name"`
-    Short   string  `yaml:"short"`
-    Action  string  `yaml:"action"`  // run, prompt, custom
-    Command string  `yaml:"command"` // with {{.var}} placeholders
-    Inputs  []Input `yaml:"inputs"`
+    Name     string  `yaml:"name"`
+    Short    string  `yaml:"short"`
+    Action   string  `yaml:"action"`   // run, prompt, guide, workflow, custom
+    Command  string  `yaml:"command"`  // with {{.var}} placeholders
+    Inputs   []Input `yaml:"inputs"`
+    Topic    string  `yaml:"topic"`    // for guide action
+    Workflow string  `yaml:"workflow"` // for workflow action
 }
 ```
 
@@ -177,6 +181,18 @@ func ReadLine(prompt string, defaultValue string) string
 // Display
 func Copyable(content string, hint string)
 func Box(content string, width int, style BoxStyle) string
+
+// Interactive multi-select (j/k or arrows, space=toggle, a=all, n=none, enter=done)
+type SelectItem struct {
+    ID          string
+    Label       string
+    Description string
+    Required    bool   // Cannot be deselected
+    Selected    bool   // Initial state
+}
+
+func MultiSelect(items []SelectItem, opts MultiSelectOptions) ([]string, error)
+func MultiSelectDeselected(items []SelectItem, opts MultiSelectOptions) ([]string, error)
 ```
 
 ## Dependencies
@@ -185,6 +201,8 @@ func Box(content string, width int, style BoxStyle) string
 - `github.com/manifoldco/promptui` - interactive select/prompt (menu/)
 - `github.com/spf13/cobra` - CLI framework integration (cobrautil/)
 - `github.com/gorilla/websocket` - WebSocket client (sh/)
+- `github.com/fsnotify/fsnotify` - file watching (sh/tail)
+- `golang.org/x/term` - terminal raw mode (term/multiselect)
 - `gopkg.in/yaml.v3` - YAML parsing (menu/, guide/, sh/)
 
 ### Used by
