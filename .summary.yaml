@@ -8,12 +8,13 @@ tags: [cli, terminal, menu, guide, sh, http, websocket, json, yaml, tail, fsnoti
 
 dependencies:
   uses:
-    - github.com/manifoldco/promptui
     - github.com/spf13/cobra
     - github.com/gorilla/websocket
     - github.com/fsnotify/fsnotify
+    - golang.org/x/term
     - gopkg.in/yaml.v3
-  used_by: []
+  used_by:
+    - asterapi
 
 entities:
   - name: Menu
@@ -65,6 +66,36 @@ entities:
     file: term/multiselect.go
     tags: [struct, interactive]
     description: Item for multi-select with ID, label, description, required flag
+
+  - name: Select
+    file: term/select.go
+    tags: [function, interactive, core]
+    description: Interactive single-select menu with arrow/j-k navigation
+
+  - name: SelectResult
+    file: term/select.go
+    tags: [struct, interactive]
+    description: Result from Select with Index, Value, and Cancelled state
+
+  - name: Autocomplete
+    file: term/autocomplete.go
+    tags: [function, interactive, core]
+    description: Input with tab-completion suggestions
+
+  - name: Completer
+    file: term/autocomplete.go
+    tags: [type, function]
+    description: Function type for providing autocomplete suggestions
+
+  - name: FuzzyCompleter
+    file: term/completers.go
+    tags: [function, completer]
+    description: Completer using fuzzy matching with scoring
+
+  - name: PathCompleter
+    file: term/completers.go
+    tags: [function, completer, filesystem]
+    description: Completer for filesystem paths with ~ expansion
 
   - name: Copyable
     file: term/box.go
@@ -132,10 +163,10 @@ gotchas:
     summary: Input IDs must exactly match template variable names
     section: Input IDs Must Match Template Variables
 
-  - id: term-zero-deps
+  - id: term-only-xterm
     tags: [term, dependencies]
-    summary: term/ package has zero external dependencies by design
-    section: term Package Has Zero Dependencies
+    summary: term/ package only uses golang.org/x/term, no other external deps
+    section: term Package Uses Only golang.org/x/term
 
   - id: guide-index-required
     tags: [guide, yaml]
@@ -161,3 +192,13 @@ gotchas:
     tags: [sh, websocket]
     summary: WSConn starts a goroutine on Dial - always call Close() to stop it
     section: WebSocket Read Loop
+
+  - id: select-cancelled-not-error
+    tags: [term, select, interactive]
+    summary: Select returns Cancelled=true on Esc/Ctrl+C, not an error
+    section: Select and Autocomplete Return Cancelled State
+
+  - id: autocomplete-nil-completer
+    tags: [term, autocomplete]
+    summary: Pass nil for completer if you just need an input field without suggestions
+    section: Autocomplete Completer Can Be Nil

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/jyrobin/cliq/term"
-	"github.com/manifoldco/promptui"
 )
 
 func (m *Menu) runCommand(item *Item) error {
@@ -31,22 +30,22 @@ func (m *Menu) promptAndRun(item *Item) error {
 		fmt.Printf("  %s\n\n", preview)
 
 		// Ask what to do
-		confirmPrompt := promptui.Select{
-			Label: "What would you like to do?",
-			Items: []string{
-				"Run preview (--dry)",
-				"Run full command",
-				"Copy command",
-				"Cancel",
-			},
+		options := []string{
+			"Run preview (--dry)",
+			"Run full command",
+			"Copy command",
+			"Cancel",
 		}
 
-		idx, _, err := confirmPrompt.Run()
+		result, err := term.Select("What would you like to do?", options, term.SelectOptions{})
 		if err != nil {
 			return err
 		}
+		if result.Cancelled {
+			return nil
+		}
 
-		switch idx {
+		switch result.Index {
 		case 0: // Preview
 			return m.executeCommand(preview)
 		case 1: // Full
@@ -64,21 +63,21 @@ func (m *Menu) promptAndRun(item *Item) error {
 	if item.Output == "clipboard" {
 		fmt.Printf("\nCommand:\n  %s\n\n", command)
 
-		confirmPrompt := promptui.Select{
-			Label: "This generates output to copy",
-			Items: []string{
-				"Run and show output",
-				"Show command (copy manually)",
-				"Cancel",
-			},
+		options := []string{
+			"Run and show output",
+			"Show command (copy manually)",
+			"Cancel",
 		}
 
-		idx, _, err := confirmPrompt.Run()
+		result, err := term.Select("This generates output to copy", options, term.SelectOptions{})
 		if err != nil {
 			return err
 		}
+		if result.Cancelled {
+			return nil
+		}
 
-		switch idx {
+		switch result.Index {
 		case 0:
 			return m.executeCommand(command)
 		case 1:
@@ -100,24 +99,25 @@ func (m *Menu) collectInputs(inputs []Input) (map[string]string, error) {
 	for _, input := range inputs {
 		label := input.Label
 		if input.Hint != "" {
-			label = fmt.Sprintf("%s (%s)", input.Label, input.Hint)
+			label = fmt.Sprintf("%s (%s)", label, input.Hint)
 		}
 
-		prompt := promptui.Prompt{
-			Label:   label,
-			Default: input.Default,
-		}
-
-		result, err := prompt.Run()
+		result, err := term.Autocomplete(nil, term.AutocompleteOptions{
+			Prompt:       label + ": ",
+			DefaultValue: input.Default,
+		})
 		if err != nil {
 			return nil, err
 		}
+		if result.Cancelled {
+			return nil, fmt.Errorf("cancelled")
+		}
 
-		if result == "" && input.Default == "" {
+		if result.Value == "" && input.Default == "" {
 			return nil, fmt.Errorf("input required: %s", input.Label)
 		}
 
-		values[input.ID] = result
+		values[input.ID] = result.Value
 	}
 
 	return values, nil

@@ -43,8 +43,8 @@ inputs:
 command: "mycli scan {{.target}}"
 ```
 
-### term Package Has Zero Dependencies
-The term/ package intentionally has no external dependencies. Don't add imports:
+### term Package Uses Only golang.org/x/term
+The term/ package only depends on `golang.org/x/term` for raw terminal mode. Don't add other external dependencies:
 ```go
 // WRONG - adds external dependency to term/
 import "github.com/fatih/color"
@@ -111,6 +111,35 @@ if err != nil { ... }
 defer ws.Close()  // Important: stops read goroutine
 ```
 
+### Select and Autocomplete Return Cancelled State
+Unlike promptui which returns errors for cancellation, term.Select and term.Autocomplete return a result with Cancelled=true:
+```go
+// WRONG - treating cancellation as error
+result, err := term.Select("Choose", items, opts)
+if err != nil {
+    return err  // Cancellation is NOT an error
+}
+
+// RIGHT - check Cancelled field
+result, err := term.Select("Choose", items, opts)
+if err != nil {
+    return err  // Real error (terminal issue, etc.)
+}
+if result.Cancelled {
+    return nil  // User pressed Esc/Ctrl+C - handle gracefully
+}
+value := result.Value
+```
+
+### Autocomplete Completer Can Be Nil
+If you don't need suggestions, pass nil for the completer:
+```go
+// Just an input field with no suggestions
+result, err := term.Autocomplete(nil, term.AutocompleteOptions{
+    Prompt: "Enter name: ",
+})
+```
+
 ## Debugging
 
 ### Menu Not Showing Items
@@ -152,9 +181,13 @@ Menus are interactive - test components separately:
 | term/style.go | ANSI color and styling functions |
 | term/prompt.go | User input utilities (WaitForEnter, Confirm) |
 | term/box.go | Box drawing for copyable content |
+| term/multiselect.go | Interactive multi-select with checkboxes |
+| term/select.go | Interactive single-select menu (replaces promptui) |
+| term/autocomplete.go | Input with tab-completion suggestions |
+| term/completers.go | Pre-built completers (prefix, fuzzy, path) |
 | menu/types.go | Config structures for YAML menus |
-| menu/menu.go | Main menu rendering loop |
-| menu/exec.go | Command execution and input collection |
+| menu/menu.go | Main menu rendering loop (uses term/select) |
+| menu/exec.go | Command execution (uses term/autocomplete) |
 | guide/types.go | Guide index and content types |
 | guide/guide.go | Guide rendering and loading |
 | sh/cmd.go | Run, Pipe, Chain, Command builder |
@@ -179,9 +212,12 @@ Menu configuration in YAML allows:
 - Embedding with go:embed
 - Runtime loading without recompilation
 
-### promptui Over Other Libraries
-Chose promptui because:
-- Active maintenance
-- Simple API for select/prompt
-- Works well in terminals
-- Used by other popular CLIs
+### Native term/ Implementation Over promptui
+Replaced promptui with native term/select and term/autocomplete because:
+- Reduces external dependencies (only golang.org/x/term needed)
+- Full control over rendering and behavior
+- Consistent cancellation handling (Cancelled field vs error)
+- Better integration with other term/ utilities
+- Fuzzy matching and path completion built-in
+
+The menu/ package now uses term/select for menus and term/autocomplete for input collection.

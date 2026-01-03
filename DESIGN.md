@@ -16,9 +16,12 @@ Designed for reuse across CLI tools and for writing Go tests that invoke externa
 │  ├── style.go       │ ANSI colors: Dim, Bold, Success, etc  │
 │  ├── prompt.go      │ Input: WaitForEnter, Confirm, ReadLine│
 │  ├── box.go         │ Box drawing, Copyable commands        │
-│  └── multiselect.go │ Interactive checkbox list             │
+│  ├── multiselect.go │ Interactive checkbox list             │
+│  ├── select.go      │ Interactive single-select menu        │
+│  ├── autocomplete.go│ Input with tab-completion             │
+│  └── completers.go  │ Pre-built completers (prefix, fuzzy)  │
 ├─────────────────────────────────────────────────────────────┤
-│  menu/              │ Interactive menus (→ promptui)        │
+│  menu/              │ Interactive menus (→ term/)           │
 │  ├── types.go       │ Config, Category, Item, Options       │
 │  ├── menu.go        │ Menu.Run(), LoadConfig()              │
 │  └── exec.go        │ Command execution, input collection   │
@@ -58,11 +61,14 @@ cliq/
 │   ├── style.go     # ANSI styling functions
 │   ├── prompt.go    # User input utilities
 │   ├── box.go       # Box drawing and copyable content
-│   └── multiselect.go # Interactive multi-select with checkboxes
+│   ├── multiselect.go # Interactive multi-select with checkboxes
+│   ├── select.go    # Interactive single-select menu
+│   ├── autocomplete.go # Input with tab-completion suggestions
+│   └── completers.go # Pre-built completers (prefix, fuzzy, path)
 ├── menu/            # Interactive menu system
 │   ├── types.go     # YAML-loadable configuration types
-│   ├── menu.go      # Menu rendering with promptui
-│   └── exec.go      # Command execution engine
+│   ├── menu.go      # Menu rendering with term/select
+│   └── exec.go      # Command execution with term/autocomplete
 ├── guide/           # Man-page style documentation
 │   ├── types.go     # Index, Content, Section, Command types
 │   └── guide.go     # Rendering and topic lookup
@@ -193,17 +199,47 @@ type SelectItem struct {
 
 func MultiSelect(items []SelectItem, opts MultiSelectOptions) ([]string, error)
 func MultiSelectDeselected(items []SelectItem, opts MultiSelectOptions) ([]string, error)
+
+// Interactive single-select (replaces promptui.Select)
+type SelectResult struct {
+    Index     int
+    Value     string
+    Cancelled bool
+}
+
+func Select(label string, items []string, opts SelectOptions) (*SelectResult, error)
+func SelectSimple(label string, items []string) (string, error)
+
+// Autocomplete input with tab-completion
+type AutocompleteResult struct {
+    Value        string
+    WasSuggested bool
+    Cancelled    bool
+}
+
+type Completer func(input string) []string
+
+func Autocomplete(completer Completer, opts AutocompleteOptions) (*AutocompleteResult, error)
+func AutocompleteSimple(prompt string, options []string) (string, error)
+
+// Pre-built completers
+func PrefixCompleter(options []string, caseSensitive bool) Completer
+func ContainsCompleter(options []string, caseSensitive bool) Completer
+func FuzzyCompleter(options []string) Completer
+func PathCompleter(dirsOnly bool) Completer
+func CommandCompleter(commands []string, argCompleter func(cmd, args string) []string) Completer
 ```
 
 ## Dependencies
 
 ### Uses
-- `github.com/manifoldco/promptui` - interactive select/prompt (menu/)
 - `github.com/spf13/cobra` - CLI framework integration (cobrautil/)
 - `github.com/gorilla/websocket` - WebSocket client (sh/)
 - `github.com/fsnotify/fsnotify` - file watching (sh/tail)
-- `golang.org/x/term` - terminal raw mode (term/multiselect)
+- `golang.org/x/term` - terminal raw mode (term/multiselect, term/select, term/autocomplete)
 - `gopkg.in/yaml.v3` - YAML parsing (menu/, guide/, sh/)
+
+Note: `github.com/manifoldco/promptui` was replaced by native term/ implementations.
 
 ### Used by
 - CLI tools using interactive menus and guides

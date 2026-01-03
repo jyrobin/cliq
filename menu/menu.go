@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jyrobin/cliq/term"
-	"github.com/manifoldco/promptui"
 	"gopkg.in/yaml.v3"
 )
 
@@ -49,35 +48,27 @@ func (m *Menu) showMainMenu() error {
 		}
 		items[len(m.config.Categories)] = "✕ Exit"
 
-		prompt := promptui.Select{
-			Label: m.config.Title,
-			Items: items,
-			Size:  m.options.Size,
-			Templates: &promptui.SelectTemplates{
-				Label:    "{{ . }}",
-				Active:   "▸ {{ . | cyan }}",
-				Inactive: "  {{ . }}",
-				Selected: "✓ {{ . | green }}",
-			},
-		}
-
-		idx, _, err := prompt.Run()
+		result, err := term.Select(m.config.Title, items, term.SelectOptions{
+			Size:     m.options.Size,
+			HideHelp: true,
+		})
 		if err != nil {
-			if err == promptui.ErrInterrupt {
-				return nil
-			}
 			return err
 		}
 
-		if idx == len(m.config.Categories) {
-			return nil // Exit
+		// ESC or Ctrl+C at main menu exits
+		if result.Cancelled {
+			return nil
 		}
 
-		if err := m.showCategoryMenu(&m.config.Categories[idx]); err != nil {
-			if err == promptui.ErrInterrupt {
-				continue // Go back to main menu
-			}
-			return err
+		// Exit option selected
+		if result.Index == len(m.config.Categories) {
+			return nil
+		}
+
+		if err := m.showCategoryMenu(&m.config.Categories[result.Index]); err != nil {
+			// Errors from category menu - just continue
+			continue
 		}
 	}
 }
@@ -91,31 +82,25 @@ func (m *Menu) showCategoryMenu(cat *Category) error {
 		}
 		items[len(cat.Items)] = "← Back"
 
-		prompt := promptui.Select{
-			Label: cat.Name,
-			Items: items,
-			Size:  m.options.Size + 2,
-			Templates: &promptui.SelectTemplates{
-				Label:    "{{ . }}",
-				Active:   "▸ {{ . | cyan }}",
-				Inactive: "  {{ . }}",
-				Selected: "✓ {{ . | green }}",
-			},
-		}
-
-		idx, _, err := prompt.Run()
+		result, err := term.Select(cat.Name, items, term.SelectOptions{
+			Size:     m.options.Size + 2,
+			HideHelp: true,
+		})
 		if err != nil {
 			return err
 		}
 
-		if idx == len(cat.Items) {
-			return nil // Back
+		// ESC goes back to main menu
+		if result.Cancelled {
+			return nil
 		}
 
-		if err := m.executeItem(&cat.Items[idx]); err != nil {
-			if err == promptui.ErrInterrupt {
-				continue
-			}
+		// Back option selected
+		if result.Index == len(cat.Items) {
+			return nil
+		}
+
+		if err := m.executeItem(&cat.Items[result.Index]); err != nil {
 			// Show error but continue
 			fmt.Printf("\n%s\n\n", term.Error(err.Error()))
 			continue
