@@ -4,7 +4,7 @@ module:
   description: CLI toolkit library - terminal utilities, interactive menus, man-page guides, shell-like utilities, and Cobra integration helpers
   status: active
 
-tags: [cli, terminal, menu, guide, sh, http, websocket, json, yaml, tail, fsnotify, prompts, toolkit, go, tui, interactive]
+tags: [cli, terminal, menu, guide, sh, http, websocket, json, yaml, tail, fsnotify, prompts, toolkit, go, tui, interactive, state-machine, pipeline]
 
 dependencies:
   uses:
@@ -132,10 +132,35 @@ entities:
     tags: [struct, http, core]
     description: HTTP client with BaseURL, Auth, and JSON/form helpers
 
-  - name: WSConn
-    file: sh/ws.go
+  - name: Conn
+    file: ws/conn.go
     tags: [struct, websocket, core]
-    description: WebSocket connection with Send, Recv, and ExpectJSON
+    description: WebSocket connection with Send, Recv, RecvJSON, ExpectType
+
+  - name: Dialer
+    file: ws/conn.go
+    tags: [struct, websocket]
+    description: WebSocket dialer with Auth, Header, Timeout options
+
+  - name: Message
+    file: ws/conn.go
+    tags: [struct, websocket]
+    description: Received WebSocket message with Text, JSON, MessageType helpers
+
+  - name: StateMachine
+    file: ws/state.go
+    tags: [struct, state, generic]
+    description: Generic state machine with defined transitions and callbacks
+
+  - name: StateHistory
+    file: ws/state.go
+    tags: [struct, state, debug]
+    description: Tracks state transitions for debugging/testing
+
+  - name: Stream
+    file: sh/pipe.go
+    tags: [struct, pipeline, core]
+    description: Data stream that can be piped through commands with transform
 
   - name: Data
     file: sh/data.go
@@ -188,9 +213,9 @@ gotchas:
     summary: Data.Get uses dot-separated paths with array indexing (e.g., users.0.name)
     section: sh.Data Path Syntax
 
-  - id: sh-ws-close-required
-    tags: [sh, websocket]
-    summary: WSConn starts a goroutine on Dial - always call Close() to stop it
+  - id: ws-close-required
+    tags: [ws, websocket]
+    summary: ws.Conn starts a goroutine on Dial - always call Close() to stop it
     section: WebSocket Read Loop
 
   - id: select-cancelled-not-error

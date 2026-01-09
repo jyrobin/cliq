@@ -30,11 +30,16 @@ Designed for reuse across CLI tools and for writing Go tests that invoke externa
 │  ├── types.go       │ Index, Content, Section, Command      │
 │  └── guide.go       │ Guide.ShowIndex(), ShowTopic()        │
 ├─────────────────────────────────────────────────────────────┤
-│  sh/                │ Shell-like utilities (→ websocket)    │
-│  ├── cmd.go         │ Run, Pipe, Chain, Command builder     │
+│  sh/                │ Shell-like utilities (→ yaml)         │
+│  ├── cmd.go         │ Run, Chain, Command builder           │
+│  ├── pipe.go        │ Stream pipeline: Exec, From, Pipe     │
 │  ├── http.go        │ HTTP client with JSON/form helpers    │
-│  ├── ws.go          │ WebSocket client with send/recv       │
-│  └── data.go        │ Generic JSON/YAML parsing, Data type  │
+│  ├── data.go        │ Generic JSON/YAML parsing, Data type  │
+│  └── tail.go        │ Multi-file tail with fsnotify         │
+├─────────────────────────────────────────────────────────────┤
+│  ws/                │ WebSocket utilities (→ websocket)     │
+│  ├── conn.go        │ Conn with Send, Recv, message parsing │
+│  └── state.go       │ Connection state management           │
 ├─────────────────────────────────────────────────────────────┤
 │  cobrautil/         │ Cobra integration (→ cobra)           │
 │  ├── menu.go        │ MenuCommand(), MenuCommandWithLoader()│
@@ -45,7 +50,8 @@ Designed for reuse across CLI tools and for writing Go tests that invoke externa
 Dependency flow:
   term/ (→ x/term) ← menu/ ← cobrautil/
                      guide/ ←─┘
-  sh/ (standalone, uses websocket + yaml + fsnotify)
+  sh/ (standalone, uses yaml + fsnotify)
+  ws/ (standalone, uses websocket)
 ```
 
 ## Directory Structure
@@ -74,10 +80,13 @@ cliq/
 │   └── guide.go     # Rendering and topic lookup
 ├── sh/              # Shell-like utilities for tests/scripts
 │   ├── cmd.go       # Command execution, piping, chaining
+│   ├── pipe.go      # Stream pipeline: Exec, From, Pipe, Transform
 │   ├── http.go      # HTTP client helpers
-│   ├── ws.go        # WebSocket client
 │   ├── data.go      # Generic JSON/YAML Data type
 │   └── tail.go      # Multi-file tail with fsnotify
+├── ws/              # WebSocket utilities (→ gorilla/websocket)
+│   ├── conn.go      # Conn with Send, Recv, JSON parsing
+│   └── state.go     # Generic state machine for connections
 └── cobrautil/       # Cobra framework integration
     ├── menu.go      # Create menu commands
     ├── guide.go     # Create guide commands
@@ -153,22 +162,80 @@ func (r *Result) Lines() []string
 cmd := Command("git", "status").Dir("/repo").Timeout(5*time.Second)
 result := cmd.Run()
 
+// Stream pipeline (sh/pipe.go)
+output, _ := Exec("cat", "file.txt").
+    Pipe("grep", "error").
+    Pipe("wc", "-l").
+    String()
+
+// Stream from various sources
+From("hello world").Pipe("wc", "-w").String()
+FromFile("data.json").Pipe("jq", ".users").JSON()
+
+// Transform and filter
+Exec("ls", "-la").
+    Filter(func(line string) bool { return strings.Contains(line, ".go") }).
+    Lines()
+
+Exec("cat", "log.txt").Grep("ERROR").String()
+
 // HTTP client
 client := HTTP().BaseURL("http://api").Auth("token")
 resp := client.PostJSON("/users", data)
 m, _ := resp.JSON()  // map[string]interface{}
 
-// WebSocket
-ws, _ := WS().Auth("token").Dial("ws://host/path")
-ws.Send(`{"action": "ping"}`)
-msg := ws.Recv(5 * time.Second)
-data, _ := msg.JSON()
-ws.Close()
-
 // Generic data (JSON/YAML)
 d, _ := ParseJSON(`{"user": {"name": "alice"}}`)
 name := d.GetString("user.name")  // "alice"
 d.Set("user.age", 30)
+```
+
+### ws (WebSocket utilities)
+```go
+// Simple dial
+conn, _ := ws.Dial("ws://host/path")
+defer conn.Close()
+
+// With options
+conn, _ := ws.NewDialer().
+    Auth("token").
+    Header("X-Custom", "value").
+    Timeout(30 * time.Second).
+    Dial("ws://host/path")
+
+// Send/Receive
+conn.Send(`{"action": "ping"}`)
+conn.SendJSON(map[string]any{"action": "subscribe"})
+
+msg := conn.Recv(5 * time.Second)
+text := msg.Text()
+data, _ := msg.JSONMap()
+msgType := msg.MessageType()  // extracts "type" field
+
+// Convenience methods
+text, _ := conn.RecvText(5 * time.Second)
+data, _ := conn.RecvJSON(5 * time.Second)
+
+// Request/Response patterns
+resp, _ := conn.ExpectJSON(`{"action": "ping"}`, 5*time.Second)
+msg, _ := conn.ExpectType(request, 5*time.Second, "response")
+
+// Collect until condition
+msgs, _ := conn.RecvUntilType(30*time.Second, "complete")
+
+// State machine for connection states
+type ConnState string
+const (
+    StateConnecting ConnState = "connecting"
+    StateConnected  ConnState = "connected"
+    StateClosed     ConnState = "closed"
+)
+
+sm := ws.NewStateMachine(StateConnecting, map[ConnState][]ConnState{
+    StateConnecting: {StateConnected, StateClosed},
+    StateConnected:  {StateClosed},
+})
+sm.Transition(StateConnected)
 ```
 
 ### term utilities
@@ -234,7 +301,7 @@ func CommandCompleter(commands []string, argCompleter func(cmd, args string) []s
 
 ### Uses
 - `github.com/spf13/cobra` - CLI framework integration (cobrautil/)
-- `github.com/gorilla/websocket` - WebSocket client (sh/)
+- `github.com/gorilla/websocket` - WebSocket client (ws/)
 - `github.com/fsnotify/fsnotify` - file watching (sh/tail)
 - `golang.org/x/term` - terminal raw mode (term/multiselect, term/select, term/autocomplete)
 - `gopkg.in/yaml.v3` - YAML parsing (menu/, guide/, sh/)

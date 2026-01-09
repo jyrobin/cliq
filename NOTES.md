@@ -104,11 +104,11 @@ d.Get("users.2.name")  // nil (out of bounds)
 ```
 
 ### WebSocket Read Loop
-WSConn starts a goroutine on Dial(). Always call Close():
+ws.Conn starts a goroutine on Dial(). Always call Close():
 ```go
-ws, err := sh.Dial("ws://host/path")
+conn, err := ws.Dial("ws://host/path")
 if err != nil { ... }
-defer ws.Close()  // Important: stops read goroutine
+defer conn.Close()  // Important: stops read goroutine
 ```
 
 ### Select and Autocomplete Return Cancelled State
@@ -191,9 +191,11 @@ Menus are interactive - test components separately:
 | guide/types.go | Guide index and content types |
 | guide/guide.go | Guide rendering and loading |
 | sh/cmd.go | Run, Pipe, Chain, Command builder |
+| sh/pipe.go | Stream pipeline: Exec, From, Pipe, Transform |
 | sh/http.go | HTTPClient with JSON/form helpers |
-| sh/ws.go | WebSocket client with Recv/Send |
 | sh/data.go | Generic Data type for JSON/YAML |
+| ws/conn.go | WebSocket Conn with Send, Recv, JSON parsing |
+| ws/state.go | Generic state machine for connection states |
 | cobrautil/menu.go | Create Cobra commands from menu config |
 | cobrautil/guide.go | Create Cobra commands for guides |
 | cobrautil/common.go | Version command, flag helpers |
