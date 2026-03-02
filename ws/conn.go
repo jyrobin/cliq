@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 )
 
 // Conn wraps a WebSocket connection with convenient methods.
@@ -24,7 +24,7 @@ type Conn struct {
 
 // Message represents a received WebSocket message.
 type Message struct {
-	Type int    // websocket.TextMessage or websocket.BinaryMessage
+	Type int    // websocket.MessageText or websocket.MessageBinary
 	Data []byte
 	Err  error
 }
@@ -98,11 +98,12 @@ func (d *Dialer) Dial(url string) (*Conn, error) {
 
 // DialContext connects to a WebSocket endpoint with context.
 func (d *Dialer) DialContext(ctx context.Context, url string) (*Conn, error) {
-	dialer := websocket.Dialer{
-		HandshakeTimeout: d.timeout,
-	}
+	dialCtx, cancel := context.WithTimeout(ctx, d.timeout)
+	defer cancel()
 
-	conn, _, err := dialer.DialContext(ctx, url, d.headers)
+	conn, _, err := websocket.Dial(dialCtx, url, &websocket.DialOptions{
+		HTTPHeader: d.headers,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -135,14 +136,14 @@ func (c *Conn) readLoop() {
 		case <-c.done:
 			return
 		default:
-			msgType, data, err := c.conn.ReadMessage()
+			msgType, data, err := c.conn.Read(context.Background())
 			if err != nil {
 				if !c.closed {
 					c.messages <- Message{Err: err}
 				}
 				return
 			}
-			c.messages <- Message{Type: msgType, Data: data}
+			c.messages <- Message{Type: int(msgType), Data: data}
 		}
 	}
 }
@@ -151,21 +152,25 @@ func (c *Conn) readLoop() {
 func (c *Conn) Send(message string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.conn.WriteMessage(websocket.TextMessage, []byte(message))
+	return c.conn.Write(context.Background(), websocket.MessageText, []byte(message))
 }
 
 // SendJSON sends a JSON message.
 func (c *Conn) SendJSON(data any) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.conn.WriteJSON(data)
+	return c.conn.Write(context.Background(), websocket.MessageText, b)
 }
 
 // SendBinary sends a binary message.
 func (c *Conn) SendBinary(data []byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.conn.WriteMessage(websocket.BinaryMessage, data)
+	return c.conn.Write(context.Background(), websocket.MessageBinary, data)
 }
 
 // Recv waits for and returns the next message with timeout.
@@ -292,28 +297,9 @@ func (c *Conn) ExpectType(send any, timeout time.Duration, expectedType string) 
 
 // Ping sends a ping and waits for pong.
 func (c *Conn) Ping(timeout time.Duration) error {
-	c.mu.Lock()
-	err := c.conn.WriteMessage(websocket.PingMessage, []byte{})
-	c.mu.Unlock()
-	if err != nil {
-		return err
-	}
-
-	pongCh := make(chan struct{}, 1)
-	c.conn.SetPongHandler(func(string) error {
-		select {
-		case pongCh <- struct{}{}:
-		default:
-		}
-		return nil
-	})
-
-	select {
-	case <-pongCh:
-		return nil
-	case <-time.After(timeout):
-		return ErrPongTimeout
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return c.conn.Ping(ctx)
 }
 
 // Close closes the WebSocket connection gracefully.
@@ -327,10 +313,7 @@ func (c *Conn) Close() error {
 	c.closed = true
 	close(c.done)
 
-	_ = c.conn.WriteMessage(websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-
-	return c.conn.Close()
+	return c.conn.Close(websocket.StatusNormalClosure, "")
 }
 
 // IsClosed returns true if the connection is closed.

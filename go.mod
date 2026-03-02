@@ -5,8 +5,8 @@ go 1.24.0
 toolchain go1.24.11
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/term v0.39.0
 	gopkg.in/yaml.v3 v3.0.1
