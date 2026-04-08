@@ -2,329 +2,101 @@
 
 ## Purpose
 
-CLI toolkit library providing reusable components for building interactive command-line applications and writing process-level tests. Five packages: terminal utilities (zero deps), interactive menus (promptui), man-page style guides (yaml), shell-like utilities for commands/HTTP/WebSocket, and Cobra integration helpers.
+CLI toolkit library - terminal utilities, interactive menus, man-page guides, shell-like utilities, and Cobra integration helpers
 
-Designed for reuse across CLI tools and for writing Go tests that invoke external commands.
+**Tags:** cli, terminal, menu, guide, sh, http, websocket, json, yaml, tail, fsnotify, prompts, toolkit, go, tui, interactive, state-machine, pipeline
 
-## Architecture Overview
+## Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         cliq                                 │
-├─────────────────────────────────────────────────────────────┤
-│  term/              │ Terminal utilities (→ x/term)         │
-│  ├── style.go       │ ANSI colors: Dim, Bold, Success, etc  │
-│  ├── prompt.go      │ Input: WaitForEnter, Confirm, ReadLine│
-│  ├── box.go         │ Box drawing, Copyable commands        │
-│  ├── multiselect.go │ Interactive checkbox list             │
-│  ├── select.go      │ Interactive single-select menu        │
-│  ├── autocomplete.go│ Input with tab-completion             │
-│  └── completers.go  │ Pre-built completers (prefix, fuzzy)  │
-├─────────────────────────────────────────────────────────────┤
-│  menu/              │ Interactive menus (→ term/)           │
-│  ├── types.go       │ Config, Category, Item, Options       │
-│  ├── menu.go        │ Menu.Run(), LoadConfig()              │
-│  └── exec.go        │ Command execution, input collection   │
-├─────────────────────────────────────────────────────────────┤
-│  guide/             │ Man-page style guides (→ yaml)        │
-│  ├── types.go       │ Index, Content, Section, Command      │
-│  └── guide.go       │ Guide.ShowIndex(), ShowTopic()        │
-├─────────────────────────────────────────────────────────────┤
-│  sh/                │ Shell-like utilities (→ yaml)         │
-│  ├── cmd.go         │ Run, Chain, Command builder           │
-│  ├── pipe.go        │ Stream pipeline: Exec, From, Pipe     │
-│  ├── http.go        │ HTTP client with JSON/form helpers    │
-│  ├── data.go        │ Generic JSON/YAML parsing, Data type  │
-│  └── tail.go        │ Multi-file tail with fsnotify         │
-├─────────────────────────────────────────────────────────────┤
-│  ws/                │ WebSocket utilities (→ websocket)     │
-│  ├── conn.go        │ Conn with Send, Recv, message parsing │
-│  └── state.go       │ Connection state management           │
-├─────────────────────────────────────────────────────────────┤
-│  cobrautil/         │ Cobra integration (→ cobra)           │
-│  ├── menu.go        │ MenuCommand(), MenuCommandWithLoader()│
-│  ├── guide.go       │ GuideCommand(), GuideHandler()        │
-│  └── common.go      │ VersionCommand(), flag helpers        │
-└─────────────────────────────────────────────────────────────┘
+cliq is a CLI toolkit library — reusable building blocks for
+interactive command-line apps and for writing process-level Go tests
+that drive external commands. It's not a single tool; it's five
+loosely-coupled packages plus a tiny `cmd/cliq` demo binary.
 
-Dependency flow:
-  term/ (→ x/term) ← menu/ ← cobrautil/
-                     guide/ ←─┘
-  sh/ (standalone, uses yaml + fsnotify)
-  ws/ (standalone, uses websocket)
-```
+The five packages are intentionally narrow:
 
-## Directory Structure
+- **term/** — terminal primitives (ANSI styling, prompts, boxes,
+  single/multi-select menus, autocomplete) over `golang.org/x/term`,
+  with no other deps
+- **menu/** — YAML-driven interactive menus built on `term/` and
+  `promptui`, with categories, items, and templated commands
+- **guide/** — man-page style documentation rendered from YAML
+- **sh/** — shell-like helpers for tests and scripts: command run /
+  chain / pipe, an HTTP client with JSON+form helpers, generic
+  JSON/YAML `Data`, and a multi-file `tail` over `fsnotify`
+- **ws/** — minimal WebSocket `Conn` + state machine
+- **cobrautil/** — adapters that turn `menu` and `guide` into
+  Cobra subcommands
 
-```
-cliq/
-├── go.mod           # github.com/jyrobin/cliq
-├── cmd/cliq/        # CLI binary (go install github.com/jyrobin/cliq/cmd/cliq@latest)
-│   ├── main.go
-│   ├── root.go
-│   └── tail.go      # cliq tail <pattern>
-├── term/            # Terminal utilities (→ golang.org/x/term)
-│   ├── style.go     # ANSI styling functions
-│   ├── prompt.go    # User input utilities
-│   ├── box.go       # Box drawing and copyable content
-│   ├── multiselect.go # Interactive multi-select with checkboxes
-│   ├── select.go    # Interactive single-select menu
-│   ├── autocomplete.go # Input with tab-completion suggestions
-│   └── completers.go # Pre-built completers (prefix, fuzzy, path)
-├── menu/            # Interactive menu system
-│   ├── types.go     # YAML-loadable configuration types
-│   ├── menu.go      # Menu rendering with term/select
-│   └── exec.go      # Command execution with term/autocomplete
-├── guide/           # Man-page style documentation
-│   ├── types.go     # Index, Content, Section, Command types
-│   └── guide.go     # Rendering and topic lookup
-├── sh/              # Shell-like utilities for tests/scripts
-│   ├── cmd.go       # Command execution, piping, chaining
-│   ├── pipe.go      # Stream pipeline: Exec, From, Pipe, Transform
-│   ├── http.go      # HTTP client helpers
-│   ├── data.go      # Generic JSON/YAML Data type
-│   └── tail.go      # Multi-file tail with fsnotify
-├── ws/              # WebSocket utilities (→ gorilla/websocket)
-│   ├── conn.go      # Conn with Send, Recv, JSON parsing
-│   └── state.go     # Generic state machine for connections
-└── cobrautil/       # Cobra framework integration
-    ├── menu.go      # Create menu commands
-    ├── guide.go     # Create guide commands
-    └── common.go    # Common CLI helpers
-```
+Consumers pick what they need. The dependency flow is shallow:
+`term ← menu ← cobrautil`, `guide ← cobrautil`, with `sh/` and `ws/`
+standalone. The library is designed to be embedded in other CLIs
+across the workspace, not to be a framework.
 
-## Key Types/Interfaces
+## Key Entities
 
-### menu.Config (YAML-driven menu definition)
-```go
-type Config struct {
-    Title      string     `yaml:"title"`
-    Categories []Category `yaml:"categories"`
-}
+- **Menu** (`menu/menu.go`) — Interactive menu instance with config and options
+- **Config** (`menu/types.go`) — YAML-loadable menu configuration with categories and items
+- **Options** (`menu/types.go`) — Runtime options including ActionHandler for custom actions
+- **SubstituteValues** (`menu/exec.go`) — Replace {{.key}} placeholders with values from map
+- **Guide** (`guide/guide.go`) — Man-page style documentation from embedded YAML files
+- **Content** (`guide/types.go`) — Guide topic with sections, categories, flags, and environment vars
+- **Dim** (`term/style.go`) — Return dimmed ANSI-styled text
+- **MultiSelect** (`term/multiselect.go`) — Interactive multi-select with checkboxes, returns selected IDs
+- **MultiSelectDeselected** (`term/multiselect.go`) — Like MultiSelect but returns deselected IDs (for skip lists)
+- **SelectItem** (`term/multiselect.go`) — Item for multi-select with ID, label, description, required flag
+- **Select** (`term/select.go`) — Interactive single-select menu with arrow/j-k navigation
+- **SelectResult** (`term/select.go`) — Result from Select with Index, Value, and Cancelled state
+- **Autocomplete** (`term/autocomplete.go`) — Input with tab-completion suggestions
+- **Completer** (`term/autocomplete.go`) — Function type for providing autocomplete suggestions
+- **FuzzyCompleter** (`term/completers.go`) — Completer using fuzzy matching with scoring
+- **PathCompleter** (`term/completers.go`) — Completer for filesystem paths with ~ expansion
+- **Copyable** (`term/box.go`) — Display content in a box with copy hint
+- **MenuCommand** (`cobrautil/menu.go`) — Create a Cobra command that runs an interactive menu
+- **GuideCommand** (`cobrautil/guide.go`) — Create a Cobra command for displaying guides
+- **Run** (`sh/cmd.go`) — Execute a command and return Result with stdout/stderr/exitcode
+- **Pipe** (`sh/cmd.go`) — Run command with input from previous Result's stdout
+- **Command** (`sh/cmd.go`) — Create command builder with Dir, Env, Stdin, Timeout options
+- **HTTPClient** (`sh/http.go`) — HTTP client with BaseURL, Auth, and JSON/form helpers
+- **Conn** (`ws/conn.go`) — WebSocket connection with Send, Recv, RecvJSON, ExpectType
+- **Dialer** (`ws/conn.go`) — WebSocket dialer with Auth, Header, Timeout options
+- **Message** (`ws/conn.go`) — Received WebSocket message with Text, JSON, MessageType helpers
+- **StateMachine** (`ws/state.go`) — Generic state machine with defined transitions and callbacks
+- **StateHistory** (`ws/state.go`) — Tracks state transitions for debugging/testing
+- **Stream** (`sh/pipe.go`) — Data stream that can be piped through commands with transform
+- **Data** (`sh/data.go`) — Generic map with dot-path access (Get, Set, GetString, etc.)
+- **Tail** (`sh/tail.go`) — Follow multiple files with colored output using fsnotify
 
-type Item struct {
-    Name     string  `yaml:"name"`
-    Short    string  `yaml:"short"`
-    Action   string  `yaml:"action"`   // run, prompt, guide, workflow, custom
-    Command  string  `yaml:"command"`  // with {{.var}} placeholders
-    Inputs   []Input `yaml:"inputs"`
-    Topic    string  `yaml:"topic"`    // for guide action
-    Workflow string  `yaml:"workflow"` // for workflow action
-}
-```
+## Gotchas
 
-### menu.Options (runtime behavior)
-```go
-type Options struct {
-    Size          int
-    ActionHandler func(item *Item) error  // For custom actions
-    BeforeRun     func(command string) bool
-    AfterRun      func(command string, err error)
-}
-```
+- **custom-action-handler** _(note)_ — Custom actions require ActionHandler in Options or they fail silently
+- **template-syntax** _(note)_ — Use {{.var}} not ${var} for command template variables
+- **input-id-match** _(note)_ — Input IDs must exactly match template variable names
+- **term-only-xterm** _(note)_ — term/ package only uses golang.org/x/term, no other external deps
+- **guide-index-required** _(note)_ — Guide package requires index.yaml in the embedded filesystem
+- **guide-prefix-match** _(note)_ — Options.Prefix must match the embed directory path
+- **sh-result-err-vs-exitcode** _(note)_ — Result.Err is for exec errors, ExitCode for command exit status - use OK()
+- **sh-data-path-syntax** _(note)_ — Data.Get uses dot-separated paths with array indexing (e.g., users.0.name)
+- **ws-close-required** _(note)_ — ws.Conn starts a goroutine on Dial - always call Close() to stop it
+- **select-cancelled-not-error** _(note)_ — Select returns Cancelled=true on Esc/Ctrl+C, not an error
+- **autocomplete-nil-completer** _(note)_ — Pass nil for completer if you just need an input field without suggestions
 
-### guide.Guide (man-page style documentation)
-```go
-type Guide struct { /* manages fs.FS with YAML files */ }
-
-func New(fsys fs.FS, opts Options) *Guide
-func (g *Guide) ShowIndex() error           // List available topics
-func (g *Guide) ShowTopic(topic string) error  // Display a topic
-func (g *Guide) LoadIndex() (*Index, error)
-func (g *Guide) LoadTopic(topic string) (*Content, error)
-func (g *Guide) HasTopic(topic string) bool
-
-type Content struct {
-    Title       string    `yaml:"title"`
-    Description string    `yaml:"description"`
-    Sections    []Section `yaml:"sections"`    // Free-form content
-    Categories  []Category `yaml:"categories"` // Command groups
-    Flags       []Flag    `yaml:"flags"`       // Global flags
-    Environment []EnvVar  `yaml:"environment"` // Env vars
-}
-```
-
-### sh (shell-like utilities)
-```go
-// Command execution
-func Run(name string, args ...string) *Result
-func Pipe(input *Result, name string, args ...string) *Result
-func Chain(cmds ...[]string) *Result
-
-type Result struct {
-    Stdout, Stderr string
-    ExitCode       int
-}
-func (r *Result) OK() bool
-func (r *Result) Lines() []string
-
-// Command builder
-cmd := Command("git", "status").Dir("/repo").Timeout(5*time.Second)
-result := cmd.Run()
-
-// Stream pipeline (sh/pipe.go)
-output, _ := Exec("cat", "file.txt").
-    Pipe("grep", "error").
-    Pipe("wc", "-l").
-    String()
-
-// Stream from various sources
-From("hello world").Pipe("wc", "-w").String()
-FromFile("data.json").Pipe("jq", ".users").JSON()
-
-// Transform and filter
-Exec("ls", "-la").
-    Filter(func(line string) bool { return strings.Contains(line, ".go") }).
-    Lines()
-
-Exec("cat", "log.txt").Grep("ERROR").String()
-
-// HTTP client
-client := HTTP().BaseURL("http://api").Auth("token")
-resp := client.PostJSON("/users", data)
-m, _ := resp.JSON()  // map[string]interface{}
-
-// Generic data (JSON/YAML)
-d, _ := ParseJSON(`{"user": {"name": "alice"}}`)
-name := d.GetString("user.name")  // "alice"
-d.Set("user.age", 30)
-```
-
-### ws (WebSocket utilities)
-```go
-// Simple dial
-conn, _ := ws.Dial("ws://host/path")
-defer conn.Close()
-
-// With options
-conn, _ := ws.NewDialer().
-    Auth("token").
-    Header("X-Custom", "value").
-    Timeout(30 * time.Second).
-    Dial("ws://host/path")
-
-// Send/Receive
-conn.Send(`{"action": "ping"}`)
-conn.SendJSON(map[string]any{"action": "subscribe"})
-
-msg := conn.Recv(5 * time.Second)
-text := msg.Text()
-data, _ := msg.JSONMap()
-msgType := msg.MessageType()  // extracts "type" field
-
-// Convenience methods
-text, _ := conn.RecvText(5 * time.Second)
-data, _ := conn.RecvJSON(5 * time.Second)
-
-// Request/Response patterns
-resp, _ := conn.ExpectJSON(`{"action": "ping"}`, 5*time.Second)
-msg, _ := conn.ExpectType(request, 5*time.Second, "response")
-
-// Collect until condition
-msgs, _ := conn.RecvUntilType(30*time.Second, "complete")
-
-// State machine for connection states
-type ConnState string
-const (
-    StateConnecting ConnState = "connecting"
-    StateConnected  ConnState = "connected"
-    StateClosed     ConnState = "closed"
-)
-
-sm := ws.NewStateMachine(StateConnecting, map[ConnState][]ConnState{
-    StateConnecting: {StateConnected, StateClosed},
-    StateConnected:  {StateClosed},
-})
-sm.Transition(StateConnected)
-```
-
-### term utilities
-```go
-// Styling
-func Dim(s string) string
-func Bold(s string) string
-func Success(s string) string  // "✓ " prefix, green
-func Error(s string) string    // "✗ " prefix, red
-
-// Input
-func WaitForEnter()
-func Confirm(prompt string, defaultYes bool) bool
-func ReadLine(prompt string, defaultValue string) string
-
-// Display
-func Copyable(content string, hint string)
-func Box(content string, width int, style BoxStyle) string
-
-// Interactive multi-select (j/k or arrows, space=toggle, a=all, n=none, enter=done)
-type SelectItem struct {
-    ID          string
-    Label       string
-    Description string
-    Required    bool   // Cannot be deselected
-    Selected    bool   // Initial state
-}
-
-func MultiSelect(items []SelectItem, opts MultiSelectOptions) ([]string, error)
-func MultiSelectDeselected(items []SelectItem, opts MultiSelectOptions) ([]string, error)
-
-// Interactive single-select (replaces promptui.Select)
-type SelectResult struct {
-    Index     int
-    Value     string
-    Cancelled bool
-}
-
-func Select(label string, items []string, opts SelectOptions) (*SelectResult, error)
-func SelectSimple(label string, items []string) (string, error)
-
-// Autocomplete input with tab-completion
-type AutocompleteResult struct {
-    Value        string
-    WasSuggested bool
-    Cancelled    bool
-}
-
-type Completer func(input string) []string
-
-func Autocomplete(completer Completer, opts AutocompleteOptions) (*AutocompleteResult, error)
-func AutocompleteSimple(prompt string, options []string) (string, error)
-
-// Pre-built completers
-func PrefixCompleter(options []string, caseSensitive bool) Completer
-func ContainsCompleter(options []string, caseSensitive bool) Completer
-func FuzzyCompleter(options []string) Completer
-func PathCompleter(dirsOnly bool) Completer
-func CommandCompleter(commands []string, argCompleter func(cmd, args string) []string) Completer
-```
+_Run `poi gotchas cliq` for full bodies and triggers._
 
 ## Dependencies
 
-### Uses
-- `github.com/spf13/cobra` - CLI framework integration (cobrautil/)
-- `github.com/gorilla/websocket` - WebSocket client (ws/)
-- `github.com/fsnotify/fsnotify` - file watching (sh/tail)
-- `golang.org/x/term` - terminal raw mode (term/multiselect, term/select, term/autocomplete)
-- `gopkg.in/yaml.v3` - YAML parsing (menu/, guide/, sh/)
+**Uses:**
 
-Note: `github.com/manifoldco/promptui` was replaced by native term/ implementations.
+- github.com/spf13/cobra
+- github.com/gorilla/websocket
+- github.com/fsnotify/fsnotify
+- golang.org/x/term
+- gopkg.in/yaml.v3
 
-### Used by
-- CLI tools using interactive menus and guides
-- Go tests for process-level testing (sh/)
+**Used by:**
 
-## Boundaries
+- asterapi
 
-### Belongs here
-- Terminal styling and formatting
-- Interactive prompts and menus
-- Man-page style documentation
-- Command execution and piping
-- HTTP/WebSocket client helpers
-- Generic JSON/YAML data manipulation
-- Cobra integration utilities
+---
 
-### Does NOT belong here
-- Application-specific business logic
-- Database or persistent storage
-- Complex configuration management
-- Domain-specific protocols
+_Generated by `poi render cliq` from `.poi.yaml` (schema v2). Edit `.poi.yaml`, not this file._
